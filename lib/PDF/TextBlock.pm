@@ -2,6 +2,11 @@ package PDF::TextBlock;
 
 use warnings;
 use strict;
+use Carp qw( croak );
+
+use constant mm => 25.4 / 72;
+use constant in => 1 / 72;
+use constant pt => 1;
 
 =head1 NAME
 
@@ -17,7 +22,13 @@ our $VERSION = '0.01';
 
 =head1 SYNOPSIS
 
-    see t/
+    will copy from t/ once working
+
+=head1 DESCRIPTION
+
+Neither Rick Measham's excellent tutorial nor PDF::FromHTML are able to cope with
+wanting a single word (words) bolded inside a text block. This module makes that
+trivial to do.
 
 =head1 METHODS
 
@@ -28,7 +39,40 @@ uh...
 =cut
 
 sub new {
-   
+   my ($package, %args) = @_;
+
+   croak "text argument required" unless ($args{text});
+   unless (ref $args{pdf} eq "PDF::API2") {
+      croak "pdf argument (a PDF::API2 object) required";
+   }
+   my $text = $args{text};
+   my $pdf = $args{pdf};
+
+   my $self = {
+      text => $text,
+      pdf  => $pdf,
+   };
+
+   my %font = (
+       Helvetica => {
+           Bold   => $pdf->corefont( 'Helvetica-Bold',    -encoding => 'latin1' ),
+           Roman  => $pdf->corefont( 'Helvetica',         -encoding => 'latin1' ),
+           Italic => $pdf->corefont( 'Helvetica-Oblique', -encoding => 'latin1' ),
+       },
+       #Gotham => {
+       #    Bold  => $pdf->ttfont('Gotham-Bold.ttf', -encode => 'latin1'),
+       #    Roman => $pdf->ttfont('Gotham-Light.otf', -encode => 'latin1'),
+       #},
+   );
+
+   my $page = $pdf->page;
+   $page->mediabox('letter');
+   my $text_obj = $page->text;
+   $text_obj->font($font{Helvetica}{Roman}, 8 / pt);
+   $text_obj->translate( 100, 100 );
+   $text_obj->text($text);
+
+   return bless $self;
 }
 
 
@@ -248,7 +292,8 @@ L<http://github.com/jhannah/pdf-textblock/tree/master>
 
 =head1 ACKNOWLEDGEMENTS
 
-Rick Measham's (aka Woosta) "Using PDF::API2" tutorial: http://rick.measham.id.au/pdf-api2/
+This module started from, and has grown on top of Rick Measham's (aka Woosta) 
+"Using PDF::API2" tutorial: http://rick.measham.id.au/pdf-api2/
 
 =head1 COPYRIGHT & LICENSE
 
