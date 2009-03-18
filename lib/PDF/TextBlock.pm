@@ -78,8 +78,9 @@ sub new {
 
 =head2 apply
 
-This method began life as text_block() in Rick Measham (aka Woosta) 
-"Using PDF::API2" tutorial (http://rick.measham.id.au/pdf-api2/). 
+The original version of this method was text_block(), which is © Rick Measham, 2004-2007. 
+The latest version of text_block() can be found in the tutorial located at http://rick.measham.id.au/pdf-api2/
+text_block() is released under the LGPL v2.1.
 
 =cut
 
