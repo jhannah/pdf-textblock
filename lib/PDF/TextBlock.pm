@@ -5,7 +5,7 @@ use strict;
 
 =head1 NAME
 
-PDF::TextBlock - The great new PDF::TextBlock!
+PDF::TextBlock - Easier creation of text blocks when using PDF::API2
 
 =head1 VERSION
 
@@ -15,38 +15,193 @@ Version 0.01
 
 our $VERSION = '0.01';
 
-
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
+    see t/
 
-Perhaps a little code snippet.
+=head1 METHODS
 
-    use PDF::TextBlock;
+=head2 new
 
-    my $foo = PDF::TextBlock->new();
-    ...
-
-=head1 EXPORT
-
-A list of functions that can be exported.  You can delete this section
-if you don't export anything, such as for a purely object-oriented module.
-
-=head1 FUNCTIONS
-
-=head2 function1
+uh...
 
 =cut
 
-sub function1 {
+sub new {
+   
 }
 
-=head2 function2
+
+=head2 apply
+
+This method began life as text_block() in Rick Measham (aka Woosta) 
+"Using PDF::API2" tutorial (http://rick.measham.id.au/pdf-api2/). 
 
 =cut
 
-sub function2 {
+sub apply {
+    my ($text_object, $text_object_bold, $text, %arg) = @_;
+
+    my ($endw, $ypos);
+
+    # Get the text in paragraphs
+    my @paragraphs = split( /\n/, $text );
+
+    # calculate width of all words
+    my $space_width = $text_object->advancewidth(' ');
+
+    my @words = split( /\s+/, $text );
+    my %width = ();
+    foreach (@words) {
+        next if exists $width{$_};
+        $width{$_} = $text_object->advancewidth($_);
+    }
+
+    $ypos = $arg{'-y'};
+    my @paragraph = split( / /, shift(@paragraphs) );
+
+    my $first_line      = 1;
+    my $first_paragraph = 1;
+
+    # while we can add another line
+
+    while ( $ypos >= $arg{'-y'} - $arg{'-h'} + $arg{'-lead'} ) {
+
+        unless (@paragraph) {
+            last unless scalar @paragraphs;
+
+            @paragraph = split( / /, shift(@paragraphs) );
+
+            $ypos -= $arg{'-parspace'} if $arg{'-parspace'};
+            last unless $ypos >= $arg{'-y'} - $arg{'-h'};
+
+            $first_line      = 1;
+            $first_paragraph = 0;
+        }
+
+        my $xpos = $arg{'-x'};
+
+        # while there's room on the line, add another word
+        my @line = ();
+
+        my $line_width = 0;
+        if ( $first_line && exists $arg{'-hang'} ) {
+
+            my $hang_width = $text_object->advancewidth( $arg{'-hang'} );
+
+            $text_object->translate( $xpos, $ypos );
+            $text_object->text( $arg{'-hang'} );
+
+            $xpos       += $hang_width;
+            $line_width += $hang_width;
+            $arg{'-indent'} += $hang_width if $first_paragraph;
+
+        }
+        elsif ( $first_line && exists $arg{'-flindent'} ) {
+
+            $xpos       += $arg{'-flindent'};
+            $line_width += $arg{'-flindent'};
+
+        }
+        elsif ( $first_paragraph && exists $arg{'-fpindent'} ) {
+
+            $xpos       += $arg{'-fpindent'};
+            $line_width += $arg{'-fpindent'};
+
+        }
+        elsif ( exists $arg{'-indent'} ) {
+
+            $xpos       += $arg{'-indent'};
+            $line_width += $arg{'-indent'};
+
+        }
+
+        while ( @paragraph
+            and $line_width + ( scalar(@line) * $space_width ) +
+            $width{ $paragraph[0] } < $arg{'-w'} )
+        {
+
+            $line_width += $width{ $paragraph[0] };
+            push( @line, shift(@paragraph) );
+
+        }
+
+        # calculate the space width
+        my ( $wordspace, $align );
+        if ( $arg{'-align'} eq 'fulljustify'
+            or ( $arg{'-align'} eq 'justify' and @paragraph ) )
+        {
+
+            if ( scalar(@line) == 1 ) {
+                @line = split( //, $line[0] );
+
+            }
+            $wordspace = ( $arg{'-w'} - $line_width ) / ( scalar(@line) - 1 );
+
+            $align = 'justify';
+        }
+        else {
+            $align = ( $arg{'-align'} eq 'justify' ) ? 'left' : $arg{'-align'};
+
+            $wordspace = $space_width;
+        }
+        $line_width += $wordspace * ( scalar(@line) - 1 );
+
+        if ( $align eq 'justify' ) {
+            foreach my $word (@line) {
+
+                if ($word =~ /<b>/) {
+                   $word =~ s/<.*?>//g;
+                   _debug("BOLD 1", $xpos, $ypos, $word);
+                   $text_object_bold->translate( $xpos, $ypos );
+                   $text_object_bold->text($word);
+                } else {
+                   _debug("normal 1", $xpos, $ypos, $word);
+                   $text_object->translate( $xpos, $ypos );
+                   $text_object->text($word);
+                }
+
+                $xpos += ( $width{$word} + $wordspace ) if (@line);
+
+            }
+            $endw = $arg{'-w'};
+        }
+        else {
+
+            # calculate the left hand position of the line
+            if ( $align eq 'right' ) {
+                $xpos += $arg{'-w'} - $line_width;
+
+            }
+            elsif ( $align eq 'center' ) {
+                $xpos += ( $arg{'-w'} / 2 ) - ( $line_width / 2 );
+
+            }
+
+            # render the line
+            _debug("normal 2", $xpos, $ypos, @line);
+            $text_object->translate( $xpos, $ypos );
+            $endw = $text_object->text( join( ' ', @line ) );
+
+        }
+        $ypos -= $arg{'-lead'};
+        $first_line = 0;
+
+    }
+    unshift( @paragraphs, join( ' ', @paragraph ) ) if scalar(@paragraph);
+
+    return ( $endw, $ypos, join( "\n", @paragraphs ) )
 }
+
+
+sub _debug{
+   my ($msg, $xpos, $ypos, @line) = @_;
+   print "[$msg $xpos, $ypos] ";
+   print join ' ', @line;
+   print "\n";
+}
+
+
 
 =head1 AUTHOR
 
@@ -58,15 +213,11 @@ Please report any bugs or feature requests to C<bug-pdf-textblock at rt.cpan.org
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=PDF-TextBlock>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
 
-
-
-
 =head1 SUPPORT
 
 You can find documentation for this module with the perldoc command.
 
     perldoc PDF::TextBlock
-
 
 You can also look for information at:
 
@@ -88,11 +239,16 @@ L<http://cpanratings.perl.org/d/PDF-TextBlock>
 
 L<http://search.cpan.org/dist/PDF-TextBlock>
 
+=item * Version control
+
+L<http://github.com/jhannah/pdf-textblock/tree/master>
+
 =back
 
 
 =head1 ACKNOWLEDGEMENTS
 
+Rick Measham's (aka Woosta) "Using PDF::API2" tutorial: http://rick.measham.id.au/pdf-api2/
 
 =head1 COPYRIGHT & LICENSE
 
