@@ -1,8 +1,13 @@
 package PDF::TextBlock;
 
-use warnings;
 use strict;
+use warnings;
 use Carp qw( croak );
+use File::Temp qw(mktemp);
+use Class::Accessor::Fast;
+
+use base qw( Class::Accessor::Fast );
+__PACKAGE__->mk_accessors(qw( pdf text fonts x y w h lead parspace align hang flindent fpindent indent ));
 
 use constant mm => 25.4 / 72;
 use constant in => 1 / 72;
@@ -34,48 +39,6 @@ trivial to do.
 
 =head2 new
 
-uh...
-
-=cut
-
-sub new {
-   my ($package, %args) = @_;
-
-   croak "text argument required" unless ($args{text});
-   unless (ref $args{pdf} eq "PDF::API2") {
-      croak "pdf argument (a PDF::API2 object) required";
-   }
-   my $text = $args{text};
-   my $pdf = $args{pdf};
-
-   my $self = {
-      text => $text,
-      pdf  => $pdf,
-   };
-
-   my %font = (
-       Helvetica => {
-           Bold   => $pdf->corefont( 'Helvetica-Bold',    -encoding => 'latin1' ),
-           Roman  => $pdf->corefont( 'Helvetica',         -encoding => 'latin1' ),
-           Italic => $pdf->corefont( 'Helvetica-Oblique', -encoding => 'latin1' ),
-       },
-       #Gotham => {
-       #    Bold  => $pdf->ttfont('Gotham-Bold.ttf', -encode => 'latin1'),
-       #    Roman => $pdf->ttfont('Gotham-Light.otf', -encode => 'latin1'),
-       #},
-   );
-
-   my $page = $pdf->page;
-   $page->mediabox('letter');
-   my $text_obj = $page->text;
-   $text_obj->font($font{Helvetica}{Roman}, 8 / pt);
-   $text_obj->translate( 100, 100 );
-   $text_obj->text($text);
-
-   return bless $self;
-}
-
-
 =head2 apply
 
 The original version of this method was text_block(), which is © Rick Measham, 2004-2007. 
@@ -85,157 +48,164 @@ text_block() is released under the LGPL v2.1.
 =cut
 
 sub apply {
-    my ($text_object, $text_object_bold, $text, %arg) = @_;
+   my ($self, %args) = @_;
 
-    my ($endw, $ypos);
+   my $text = $self->text;
+   my $pdf  = $self->pdf;
+   croak "text attribute required" unless ($text);
+   unless (ref $pdf eq "PDF::API2") {
+      croak "pdf attribute (a PDF::API2 object) required";
+   }
 
-    # Get the text in paragraphs
-    my @paragraphs = split( /\n/, $text );
+   $self->_apply_defaults();
 
-    # calculate width of all words
-    my $space_width = $text_object->advancewidth(' ');
+   my %fonts = (
+      Helvetica => {
+         Bold   => $pdf->corefont( 'Helvetica-Bold',    -encoding => 'latin1' ),
+         Roman  => $pdf->corefont( 'Helvetica',         -encoding => 'latin1' ),
+         Italic => $pdf->corefont( 'Helvetica-Oblique', -encoding => 'latin1' ),
+      },
+      #Gotham => {
+      #   Bold  => $pdf->ttfont('Gotham-Bold.ttf', -encode => 'latin1'),
+      #   Roman => $pdf->ttfont('Gotham-Light.otf', -encode => 'latin1'),
+      #},
+   );
 
-    my @words = split( /\s+/, $text );
-    my %width = ();
-    foreach (@words) {
-        next if exists $width{$_};
-        $width{$_} = $text_object->advancewidth($_);
-    }
+   my $page = $pdf->page;
+   my $content_text      = $page->text;     # PDF::API2::Content::Text obj
+   my $content_text_bold = $page->text;     # PDF::API2::Content::Text obj
+   $content_text->font(      $fonts{Helvetica}{Roman},   18 / pt );
+   $content_text_bold->font( $fonts{Helvetica}{Bold},    18 / pt );
 
-    $ypos = $arg{'-y'};
-    my @paragraph = split( / /, shift(@paragraphs) );
 
-    my $first_line      = 1;
-    my $first_paragraph = 1;
+   $content_text->fillcolor('black');
+   $content_text->translate(95 / mm, 131 / mm);
+   $content_text->text_right('BLAHgers');
+   return 1;
 
-    # while we can add another line
+   my ($endw, $ypos);
 
-    while ( $ypos >= $arg{'-y'} - $arg{'-h'} + $arg{'-lead'} ) {
+   # Get the text in paragraphs
+   my @paragraphs = split( /\n/, $text );
 
-        unless (@paragraph) {
-            last unless scalar @paragraphs;
+   # calculate width of all words
+   my $space_width = $content_text->advancewidth(' ');
 
-            @paragraph = split( / /, shift(@paragraphs) );
+   my @words = split( /\s+/, $text );
+   my %width = ();
+   foreach (@words) {
+      next if exists $width{$_};
+      $width{$_} = $content_text->advancewidth($_);
+   }
 
-            $ypos -= $arg{'-parspace'} if $arg{'-parspace'};
-            last unless $ypos >= $arg{'-y'} - $arg{'-h'};
+   $ypos = $self->y;
+   my @paragraph = split( / /, shift(@paragraphs) );
 
-            $first_line      = 1;
-            $first_paragraph = 0;
-        }
+   my $first_line      = 1;
+   my $first_paragraph = 1;
 
-        my $xpos = $arg{'-x'};
+   # while we can add another line
 
-        # while there's room on the line, add another word
-        my @line = ();
+   while ( $ypos >= $self->y - $self->h + $self->lead ) {
 
-        my $line_width = 0;
-        if ( $first_line && exists $arg{'-hang'} ) {
+      unless (@paragraph) {
+         last unless scalar @paragraphs;
 
-            my $hang_width = $text_object->advancewidth( $arg{'-hang'} );
+         @paragraph = split( / /, shift(@paragraphs) );
 
-            $text_object->translate( $xpos, $ypos );
-            $text_object->text( $arg{'-hang'} );
+         $ypos -= $self->parspace if $self->parspace;
+         last unless $ypos >= $self->y - $self->h;
 
-            $xpos       += $hang_width;
-            $line_width += $hang_width;
-            $arg{'-indent'} += $hang_width if $first_paragraph;
+         $first_line      = 1;
+         $first_paragraph = 0;
+      }
 
-        }
-        elsif ( $first_line && exists $arg{'-flindent'} ) {
+      my $xpos = $self->x;
 
-            $xpos       += $arg{'-flindent'};
-            $line_width += $arg{'-flindent'};
+      # while there's room on the line, add another word
+      my @line = ();
 
-        }
-        elsif ( $first_paragraph && exists $arg{'-fpindent'} ) {
+      my $line_width = 0;
+      if ( $first_line && defined $self->hang ) {
+         my $hang_width = $content_text->advancewidth( $self->hang );
 
-            $xpos       += $arg{'-fpindent'};
-            $line_width += $arg{'-fpindent'};
+         $content_text->translate( $xpos, $ypos );
+         $content_text->text( $self->hang );
 
-        }
-        elsif ( exists $arg{'-indent'} ) {
+         $xpos       += $hang_width;
+         $line_width += $hang_width;
+         $self->indent($self->indent + $hang_width) if $first_paragraph;
+      } elsif ( $first_line && defined $self->flindent ) {
+         $xpos       += $self->flindent;
+         $line_width += $self->flindent;
+      } elsif ( $first_paragraph && defined $self->fpindent ) {
+         $xpos       += $self->fpindent;
+         $line_width += $self->fpindent;
+      } elsif ( defined $self->indent ) {
+         $xpos       += $self->indent;
+         $line_width += $self->indent;
+      }
 
-            $xpos       += $arg{'-indent'};
-            $line_width += $arg{'-indent'};
+      while ( 
+         @paragraph and 
+            $line_width + 
+            ( scalar(@line) * $space_width ) +
+            $width{ $paragraph[0] } 
+            < $self->w
+      ) {
+         $line_width += $width{ $paragraph[0] };
+         push( @line, shift(@paragraph) );
+      }
 
-        }
+      # calculate the space width
+      my ( $wordspace, $align );
+      if ( $self->align eq 'fulljustify'
+         or ( $self->align eq 'justify' and @paragraph ) 
+      ) {
+         if ( scalar(@line) == 1 ) {
+            @line = split( //, $line[0] );
+         }
+         $wordspace = ( $self->w - $line_width ) / ( scalar(@line) - 1 );
+         $align = 'justify';
+      } else {
+         $align = ( $self->align eq 'justify' ) ? 'left' : $self->align;
+         $wordspace = $space_width;
+      }
+      $line_width += $wordspace * ( scalar(@line) - 1 );
 
-        while ( @paragraph
-            and $line_width + ( scalar(@line) * $space_width ) +
-            $width{ $paragraph[0] } < $arg{'-w'} )
-        {
-
-            $line_width += $width{ $paragraph[0] };
-            push( @line, shift(@paragraph) );
-
-        }
-
-        # calculate the space width
-        my ( $wordspace, $align );
-        if ( $arg{'-align'} eq 'fulljustify'
-            or ( $arg{'-align'} eq 'justify' and @paragraph ) )
-        {
-
-            if ( scalar(@line) == 1 ) {
-                @line = split( //, $line[0] );
-
+      if ( $align eq 'justify' ) {
+         foreach my $word (@line) {
+            if ($word =~ /<b>/) {
+               $word =~ s/<.*?>//g;
+               _debug("BOLD 1", $xpos, $ypos, $word);
+               $content_text_bold->translate( $xpos, $ypos );
+               $content_text_bold->text($word);
+            } else {
+               _debug("normal 1", $xpos, $ypos, $word);
+               $content_text->translate( $xpos, $ypos );
+               $content_text->text($word);
             }
-            $wordspace = ( $arg{'-w'} - $line_width ) / ( scalar(@line) - 1 );
+            $xpos += ( $width{$word} + $wordspace ) if (@line);
+         }
+         $endw = $self->w;
+      } else {
+         # calculate the left hand position of the line
+         if ( $align eq 'right' ) {
+            $xpos += $self->w - $line_width;
+         } elsif ( $align eq 'center' ) {
+            $xpos += ( $self->w / 2 ) - ( $line_width / 2 );
+         }
+         # render the line
+         _debug("normal 2", $xpos, $ypos, @line);
+         $content_text->translate( $xpos, $ypos );
+         $endw = $content_text->text( join( ' ', @line ) );
+      }
+      $ypos -= $self->lead;
+      $first_line = 0;
+   }
+   unshift( @paragraphs, join( ' ', @paragraph ) ) if scalar(@paragraph);
 
-            $align = 'justify';
-        }
-        else {
-            $align = ( $arg{'-align'} eq 'justify' ) ? 'left' : $arg{'-align'};
-
-            $wordspace = $space_width;
-        }
-        $line_width += $wordspace * ( scalar(@line) - 1 );
-
-        if ( $align eq 'justify' ) {
-            foreach my $word (@line) {
-
-                if ($word =~ /<b>/) {
-                   $word =~ s/<.*?>//g;
-                   _debug("BOLD 1", $xpos, $ypos, $word);
-                   $text_object_bold->translate( $xpos, $ypos );
-                   $text_object_bold->text($word);
-                } else {
-                   _debug("normal 1", $xpos, $ypos, $word);
-                   $text_object->translate( $xpos, $ypos );
-                   $text_object->text($word);
-                }
-
-                $xpos += ( $width{$word} + $wordspace ) if (@line);
-
-            }
-            $endw = $arg{'-w'};
-        }
-        else {
-
-            # calculate the left hand position of the line
-            if ( $align eq 'right' ) {
-                $xpos += $arg{'-w'} - $line_width;
-
-            }
-            elsif ( $align eq 'center' ) {
-                $xpos += ( $arg{'-w'} / 2 ) - ( $line_width / 2 );
-
-            }
-
-            # render the line
-            _debug("normal 2", $xpos, $ypos, @line);
-            $text_object->translate( $xpos, $ypos );
-            $endw = $text_object->text( join( ' ', @line ) );
-
-        }
-        $ypos -= $arg{'-lead'};
-        $first_line = 0;
-
-    }
-    unshift( @paragraphs, join( ' ', @paragraph ) ) if scalar(@paragraph);
-
-    return ( $endw, $ypos, join( "\n", @paragraphs ) )
+   return ( $endw, $ypos, join( "\n", @paragraphs ) )
 }
 
 
@@ -246,6 +216,28 @@ sub _debug{
    print "\n";
 }
 
+
+=head2 _apply_defaults
+
+Applies defaults for you wherever you didn't explicitly set a different value.
+
+=cut
+
+sub _apply_defaults {
+   my ($self) = @_;
+   my %defaults = (
+      x        => 20 / mm,
+      y        => 238 / mm,
+      w        => 170 / mm,
+      h        => 220 / mm,
+      lead     => 15 / pt,
+      parspace => 0 / pt,
+      align    => 'justify',
+   );
+   foreach my $att (keys %defaults) {
+      $self->$att($defaults{$att}) unless defined $self->$att;
+   }
+}
 
 
 =head1 AUTHOR
@@ -293,7 +285,7 @@ L<http://github.com/jhannah/pdf-textblock/tree/master>
 
 =head1 ACKNOWLEDGEMENTS
 
-This module started from, and has grown on top of Rick Measham's (aka Woosta) 
+This module started from, and has grown on top of, Rick Measham's (aka Woosta) 
 "Using PDF::API2" tutorial: http://rick.measham.id.au/pdf-api2/
 
 =head1 COPYRIGHT & LICENSE
@@ -302,7 +294,6 @@ Copyright 2009 Jay Hannah, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
-
 
 =cut
 
