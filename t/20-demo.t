@@ -13,6 +13,8 @@ use constant mm => 25.4 / 72;
 use constant in => 1 / 72;
 use constant pt => 1;
 
+my $picture = "t/camel.jpg";
+
 ok(my $pdf = PDF::API2->new( -file => "20-demo.pdf" ),   "PDF::API2->new()");
 my $page = $pdf->page;
 $page->mediabox( 105/mm, 148/mm );
@@ -31,7 +33,8 @@ $red_line->move( 5/mm, 125/mm );
 $red_line->line( 100/mm, 125/mm );
 $red_line->stroke;
 
-# headline_text   (Shorter to use the original demo for 'text_right'... -grin-)
+
+# headline_text
 ok(my $tb = PDF::TextBlock->new({
    pdf   => $pdf,
    page  => $page,
@@ -49,12 +52,14 @@ ok(my $tb = PDF::TextBlock->new({
 }),                                                   "new()");
 ok($tb->apply(),                                      "apply()");
 
+
 my $background = $page->gfx;
 $background->strokecolor('lightgrey');
 $background->circle( 20/mm, 45/mm, 45/mm );
 $background->circle( 18/mm, 48/mm, 43/mm );
 $background->circle( 19/mm, 40/mm, 46/mm );
 $background->stroke;
+
 
 # left_column_text1
 ok($tb = PDF::TextBlock->new({
@@ -73,51 +78,45 @@ ok($tb = PDF::TextBlock->new({
    lead  => 7/pt,
 }),                                                   "new() left_column_text1");
 my ($endw, $ypos, $paragraph);
-ok(($endw, $ypos, $paragraph) = $tb->apply(),         "apply()");
+ok(($endw, $ypos, $paragraph) = $tb->apply(),         "apply() left_column_text1");
 
-# left_column_text - blue bold line
-ok($tb = PDF::TextBlock->new({
-   pdf   => $pdf,
-   page  => $page,
-   text  => 'Big Blue Line ' x 5,
-   fonts => {
-      default => PDF::TextBlock::Font->new({
-         pdf       => $pdf,
-         size      => 6/pt,
-         fillcolor => 'darkblue',
-      }),
-   },
-   x     => 10/mm, 
-   y     => $ypos - 7/pt,   # Dynamic from end of last TextBlock
-   w     => 41.5/mm,
-   h     => 110/mm - ( 119/mm - $ypos ),
-   lead  => 7/pt,
-   align => 'center',
-}),                                                   "new() left_column_text2 - blue bold line");
-ok(($endw, $ypos, $paragraph) = $tb->apply(),         "apply()");
+
+# left_column_text2 - blue bold line
+$tb->text('Big Blue Line ' x 5);
+$tb->fonts->{default}->fillcolor('darkblue');
+$tb->y($ypos - 7/pt);                    # Dynamic from end of last TextBlock
+$tb->h(110/mm - ( 119/mm - $ypos ));     # Dynamic from end of last TextBlock
+$tb->align('center');
+ok(($endw, $ypos, $paragraph) = $tb->apply(),         "apply() left_column_text2");
+
 
 # left_column_text3
-ok($tb = PDF::TextBlock->new({
-   pdf   => $pdf,
-   page  => $page,
-   fonts => {
-      default => PDF::TextBlock::Font->new({
-         pdf       => $pdf,
-         size      => 6/pt,
-      }),
-   },
-   x     => 10/mm, 
-   y     => $ypos - 7/pt,   # Dynamic from end of last TextBlock
-   w     => 41.5/mm,
-   h     => 110/mm - ( 119/mm - $ypos ),
-   lead  => 7/pt,
-}),                                                   "new() left_column_text3");
-ok(($endw, $ypos, $paragraph) = $tb->apply(),         "apply()");
+$tb->text($tb->garbledy_gook);
+$tb->fonts->{default}->fillcolor(undef);
+$tb->y($ypos - 7/pt);                    # Dynamic from end of last TextBlock
+$tb->h(110/mm - ( 119/mm - $ypos ));     # Dynamic from end of last TextBlock
+$tb->align('justify');
+ok(($endw, $ypos, $paragraph) = $tb->apply(),         "apply() left_column_text3");
 
+
+my $photo = $page->gfx;
+die("Unable to find image file: $!") unless -e $picture;
+my $photo_file = $pdf->image_jpeg($picture);
+$photo->image( $photo_file, 54 / mm, 66 / mm, 41 / mm, 55 / mm );
+
+
+# right_column_text
+$tb->text($tb->garbledy_gook);
+$tb->fonts->{default}->fillcolor(undef);
+$tb->x(54/mm);
+$tb->y(62/mm);
+$tb->h(54/mm);
+$tb->align('justify');
+ok(($endw, $ypos, $paragraph) = $tb->apply(),         "apply() right_column_text");
 
 
 $pdf->save;    # Doesn't return true, even when it succeeds. -sigh-
 $pdf->end;     # Doesn't return true, even when it succeeds. -sigh-
-ok(-r "20-demo.pdf",                                     "20-demo.pdf created");
+ok(-r "20-demo.pdf",                                  "20-demo.pdf created");
 
 diag( "Testing PDF::TextBlock $PDF::TextBlock::VERSION, Perl $], $^X" );
