@@ -5,9 +5,10 @@ use warnings;
 use Carp qw( croak );
 use File::Temp qw(mktemp);
 use Class::Accessor::Fast;
+use PDF::TextBlock::Font;
 
 use base qw( Class::Accessor::Fast );
-__PACKAGE__->mk_accessors(qw( pdf text fonts x y w h lead parspace align hang flindent fpindent indent ));
+__PACKAGE__->mk_accessors(qw( pdf page text fonts x y w h lead parspace align hang flindent fpindent indent ));
 
 use constant mm => 25.4 / 72;
 use constant in => 1 / 72;
@@ -27,7 +28,7 @@ our $VERSION = '0.01';
 
 =head1 SYNOPSIS
 
-    will copy from t/ once working
+  TODO copy from t/
 
 =head1 DESCRIPTION
 
@@ -50,38 +51,42 @@ text_block() is released under the LGPL v2.1.
 sub apply {
    my ($self, %args) = @_;
 
-   my $text = $self->text;
    my $pdf  = $self->pdf;
-   croak "text attribute required" unless ($text);
    unless (ref $pdf eq "PDF::API2") {
       croak "pdf attribute (a PDF::API2 object) required";
    }
 
    $self->_apply_defaults();
 
-   my %fonts = (
-      Helvetica => {
-         Bold   => $pdf->corefont( 'Helvetica-Bold',    -encoding => 'latin1' ),
-         Roman  => $pdf->corefont( 'Helvetica',         -encoding => 'latin1' ),
-         Italic => $pdf->corefont( 'Helvetica-Oblique', -encoding => 'latin1' ),
-      },
-      #Gotham => {
-      #   Bold  => $pdf->ttfont('Gotham-Bold.ttf', -encode => 'latin1'),
-      #   Roman => $pdf->ttfont('Gotham-Light.otf', -encode => 'latin1'),
-      #},
-   );
+   my $text = $self->text;
 
-   my $page = $pdf->page;
+   # ---------------
+   # TODO ... here's where we'll handling the markup font switching?
+   #     no... below
+   my $font;
+   if ($self->fonts && $self->fonts->{default}) {
+      $font = $self->fonts->{default};
+   } else {
+      $font = PDF::TextBlock::Font->new({ pdf => $pdf });
+   }
+   # ------------------
+
+   $font->apply_defaults;
+
+   my $page = $self->page;
    my $content_text      = $page->text;     # PDF::API2::Content::Text obj
    my $content_text_bold = $page->text;     # PDF::API2::Content::Text obj
-   $content_text->font(      $fonts{Helvetica}{Roman},   18 / pt );
-   $content_text_bold->font( $fonts{Helvetica}{Bold},    18 / pt );
+   $content_text->font(      $font->font,   $font->size );
+   $content_text_bold->font( $font->font,   $font->size );
 
+   $content_text->fillcolor($font->fillcolor);
+   $content_text->translate($self->x, $self->y);
 
-   $content_text->fillcolor('black');
-   $content_text->translate(95 / mm, 131 / mm);
-   $content_text->text_right('BLAHgers');
-   return 1;
+   if ($self->align eq "text_right") {
+      # Special case... Single line of text that we don't paragraph out...
+      $content_text->text_right($text);
+      return 1;
+   }
 
    my ($endw, $ypos);
 
@@ -228,7 +233,7 @@ sub _apply_defaults {
    my %defaults = (
       x        => 20 / mm,
       y        => 238 / mm,
-      w        => 170 / mm,
+      w        => 175 / mm,
       h        => 220 / mm,
       lead     => 15 / pt,
       parspace => 0 / pt,
@@ -237,6 +242,36 @@ sub _apply_defaults {
    foreach my $att (keys %defaults) {
       $self->$att($defaults{$att}) unless defined $self->$att;
    }
+
+   # Create a new page inside our .pdf unless a page was provided.
+   unless (defined $self->page) {
+      $self->page($self->pdf->page);
+   }
+
+   # Use garbledy gook unless text was provided.
+   unless (defined $self->text) {
+      $self->text($self->garbledy_gook);
+   }
+}
+
+
+=head2 garbledy_gook
+
+Returns a string of jibberish. Used by test scripts to verify that different justifications
+(left, right, justify, etc.) are working.
+
+=cut
+
+sub garbledy_gook {
+   my ($self) = @_;
+   my $rval;
+   for (1..100) {
+      for (1.. int(rand(10)) + 3) {
+         $rval .= ('a'..'z')[ int(rand(26)) ];
+      }
+      $rval .= " ";
+   }  
+   return $rval;
 }
 
 

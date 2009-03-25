@@ -10,10 +10,10 @@ use constant pt => 1;
 ok(my $pdf = PDF::API2->new( -file => "10-gen.pdf" ),   "PDF::API2->new()");
 ok(my $tb  = PDF::TextBlock->new({
    pdf   => $pdf,
-   text  => 'blah blah blah...',
+   # text  => 'blah blah blah...',
 }),                                                   "new()");
 ok(my ($endw, $ypos, $paragraph) = $tb->apply(),      "apply()");
-print "[[[" . $tb->text . "]]]\n";
+printf("[%s|%s|%s|%s]\n", $endw, $ypos, $paragraph, $tb->text);
 
 $pdf->save;    # Doesn't return true, even when it succeeds. -sigh-
 $pdf->end;     # Doesn't return true, even when it succeeds. -sigh-
