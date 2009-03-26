@@ -12,7 +12,12 @@ use constant pt => 1;
 ok(my $pdf = PDF::API2->new( -file => "30-demo.pdf" ),   "PDF::API2->new()");
 ok(my $tb  = PDF::TextBlock->new({
    pdf   => $pdf,
-   # text  => 'blah blah blah...',
+   fonts => {
+      b => PDF::TextBlock::Font->new({
+         pdf  => $pdf,
+         font => $pdf->corefont( 'Helvetica-Bold',    -encoding => 'latin1' ),
+      }),
+   }
 }),                                                   "new()");
 
 # Tag every other word with <b>.
@@ -29,3 +34,6 @@ $pdf->end;     # Doesn't return true, even when it succeeds. -sigh-
 ok(-r "30-demo.pdf",                                  "30-demo.pdf created");
 
 diag( "Testing PDF::TextBlock $PDF::TextBlock::VERSION, Perl $], $^X" );
+
+
+

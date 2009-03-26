@@ -59,38 +59,33 @@ sub apply {
    $self->_apply_defaults();
 
    my $text = $self->text;
-
-   # ---------------
-   # TODO ... here's where we'll handling the markup font switching?
-   #     no... below
-   my $font;
-   if ($self->fonts && $self->fonts->{default}) {
-      $font = $self->fonts->{default};
-   } else {
-      $font = PDF::TextBlock::Font->new({ pdf => $pdf });
-   }
-   # ------------------
-
-   my $fontBOLD = PDF::TextBlock::Font->new({
-      # font is a PDF::API2::Resource::Font::CoreFont
-      font      => $pdf->corefont( 'Helvetica-Bold', -encoding => 'latin1' ),
-      fillcolor => 'black',
-      size      => 10 / pt,
-   });
-
-
-   $font->apply_defaults;
-
    my $page = $self->page;
-   my $content_text      = $page->text;     # PDF::API2::Content::Text obj
-   my $content_text_bold = $page->text;     # PDF::API2::Content::Text obj
-   $content_text->font(      $font->font,   $font->size );
-   $content_text_bold->font( $fontBOLD->font,   $fontBOLD->size );
 
-   $content_text->fillcolor($font->fillcolor);
-   $content_text->translate($self->x, $self->y);
-   $content_text_bold->fillcolor($font->fillcolor);
-   $content_text_bold->translate($self->x, $self->y);
+   # Build %content_texts. A hash of all PDF::API2::Content::Text objects,
+   # one for each tag (<b> or <i> or whatever) in $text.
+   my %content_texts;
+   foreach my $tag (($text =~ /<([^\/].*?)>/g), "default") {
+      next if ($content_texts{$tag});
+      my $content_text = $page->text;      # PDF::API2::Content::Text obj
+      my $font;
+      if ($self->fonts && $self->fonts->{$tag}) {
+         warn "using the specific font you set for <$tag>";
+         $font = $self->fonts->{$tag};
+      } elsif ($self->fonts && $self->fonts->{default}) {
+         warn "using the default font you set for <$tag>";
+         $font = $self->fonts->{default};
+      } else {
+         warn "using system default font for <$tag> since you specified neither <$tag> nor a 'default'";
+         $font = PDF::TextBlock::Font->new({ pdf => $pdf });
+      }
+      $font->apply_defaults;
+      $content_text->font($font->font, $font->size);
+      $content_text->fillcolor($font->fillcolor);
+      $content_text->translate($self->x, $self->y);
+      $content_texts{$tag} = $content_text;
+   }
+
+   my $content_text = $content_texts{default};
 
    if ($self->align eq "text_right") {
       # Special case... Single line of text that we don't paragraph out...
@@ -112,12 +107,12 @@ sub apply {
    my %width = ();
    foreach my $word (@words) {
       next if exists $width{$_};
-      if ($word =~ /<b>/) {
-         my $tmp = $word;
-         $tmp =~ s/<.*?>//g;
-         $width{$word} = $content_text_bold->advancewidth($tmp);
+      if (my ($tag) = ($word =~ /<(.*?)>/)) {
+         my $stripped = $word;
+         $stripped =~ s/<.*?>//g;
+         $width{$word} = $content_texts{$tag}->advancewidth($stripped);
       } else {
-         $width{$word} = $content_text->advancewidth($word);
+         $width{$word} = $content_texts{default}->advancewidth($word);
       }
    }
 
@@ -198,16 +193,16 @@ sub apply {
 
       if ( $align eq 'justify' ) {
          foreach my $word (@line) {
-            if ($word =~ /<b>/) {
-               my $tmp = $word;
-               $tmp =~ s/<.*?>//g;
-               _debug("BOLD 1", $xpos, $ypos, $tmp);
-               $content_text_bold->translate( $xpos, $ypos );
-               $content_text_bold->text($tmp);
+            if (my ($tag) = ($word =~ /<(.*?)>/)) {
+               my $stripped = $word;
+               $stripped =~ s/<.*?>//g;
+               _debug("$tag 1", $xpos, $ypos, $stripped);
+               $content_texts{$tag}->translate( $xpos, $ypos );
+               $content_texts{$tag}->text($stripped);
             } else {
-               _debug("normal 1", $xpos, $ypos, $word);
-               $content_text->translate( $xpos, $ypos );
-               $content_text->text($word);
+               _debug("default 1", $xpos, $ypos, $word);
+               $content_texts{default}->translate( $xpos, $ypos );
+               $content_texts{default}->text($word);
             }
             unless ($width{$word}) {
                warn "Can't find \$width{$word}";
@@ -223,9 +218,9 @@ sub apply {
             $xpos += ( $self->w / 2 ) - ( $line_width / 2 );
          }
          # render the line
-         _debug("normal 2", $xpos, $ypos, @line);
+         _debug("default 2", $xpos, $ypos, @line);
          $content_text->translate( $xpos, $ypos );
-         $endw = $content_text->text( join( ' ', @line ) );
+         $endw = $content_texts{default}->text( join( ' ', @line ) );
       }
       $ypos -= $self->lead;
       $first_line = 0;
