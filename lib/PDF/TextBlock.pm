@@ -71,16 +71,26 @@ sub apply {
    }
    # ------------------
 
+   my $fontBOLD = PDF::TextBlock::Font->new({
+      # font is a PDF::API2::Resource::Font::CoreFont
+      font      => $pdf->corefont( 'Helvetica-Bold', -encoding => 'latin1' ),
+      fillcolor => 'black',
+      size      => 10 / pt,
+   });
+
+
    $font->apply_defaults;
 
    my $page = $self->page;
    my $content_text      = $page->text;     # PDF::API2::Content::Text obj
    my $content_text_bold = $page->text;     # PDF::API2::Content::Text obj
    $content_text->font(      $font->font,   $font->size );
-   $content_text_bold->font( $font->font,   $font->size );
+   $content_text_bold->font( $fontBOLD->font,   $fontBOLD->size );
 
    $content_text->fillcolor($font->fillcolor);
    $content_text->translate($self->x, $self->y);
+   $content_text_bold->fillcolor($font->fillcolor);
+   $content_text_bold->translate($self->x, $self->y);
 
    if ($self->align eq "text_right") {
       # Special case... Single line of text that we don't paragraph out...
@@ -97,10 +107,18 @@ sub apply {
    my $space_width = $content_text->advancewidth(' ');
 
    my @words = split( /\s+/, $text );
+
+   # Build a hash of widths we refer back to later.
    my %width = ();
-   foreach (@words) {
+   foreach my $word (@words) {
       next if exists $width{$_};
-      $width{$_} = $content_text->advancewidth($_);
+      if ($word =~ /<b>/) {
+         my $tmp = $word;
+         $tmp =~ s/<.*?>//g;
+         $width{$word} = $content_text_bold->advancewidth($tmp);
+      } else {
+         $width{$word} = $content_text->advancewidth($word);
+      }
    }
 
    $ypos = $self->y;
@@ -181,14 +199,18 @@ sub apply {
       if ( $align eq 'justify' ) {
          foreach my $word (@line) {
             if ($word =~ /<b>/) {
-               $word =~ s/<.*?>//g;
-               _debug("BOLD 1", $xpos, $ypos, $word);
+               my $tmp = $word;
+               $tmp =~ s/<.*?>//g;
+               _debug("BOLD 1", $xpos, $ypos, $tmp);
                $content_text_bold->translate( $xpos, $ypos );
-               $content_text_bold->text($word);
+               $content_text_bold->text($tmp);
             } else {
                _debug("normal 1", $xpos, $ypos, $word);
                $content_text->translate( $xpos, $ypos );
                $content_text->text($word);
+            }
+            unless ($width{$word}) {
+               warn "Can't find \$width{$word}";
             }
             $xpos += ( $width{$word} + $wordspace ) if (@line);
          }
@@ -216,7 +238,7 @@ sub apply {
 
 sub _debug{
    my ($msg, $xpos, $ypos, @line) = @_;
-   print "[$msg $xpos, $ypos] ";
+   printf("[%s|%d|%d] ", $msg, $xpos, $ypos);
    print join ' ', @line;
    print "\n";
 }
