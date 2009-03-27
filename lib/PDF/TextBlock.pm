@@ -14,7 +14,7 @@ use constant mm => 25.4 / 72;
 use constant in => 1 / 72;
 use constant pt => 1;
 
-my $debug = 1;
+my $debug = 0;
 
 =head1 NAME
 
@@ -34,9 +34,9 @@ TODO - See t/ for examples.
 
 =head1 DESCRIPTION
 
-Neither Rick Measham's excellent tutorial nor PDF::FromHTML are able to cope with
-wanting a single word (words) bolded inside a text block. This module makes that
-trivial to do.
+Neither Rick Measham's excellent PDF::API2 tutorial nor PDF::FromHTML are able to cope with
+wanting a single word (or words) bolded inside a text block. This module makes that task
+trivial.
 
 =head1 METHODS
 
@@ -132,8 +132,9 @@ sub apply {
          $debug && warn "using the default font you set for <$tag>";
          $font = $self->fonts->{default};
       } else {
-         $debug && warn "using system default font for <$tag> since you specified neither <$tag> nor a 'default'";
+         $debug && warn "using PDF::TextBlock::Font default font for <$tag> since you specified neither <$tag> nor a 'default'";
          $font = PDF::TextBlock::Font->new({ pdf => $pdf });
+         $self->fonts->{$tag} = $font;
       }
       $font->apply_defaults;
       $content_text->font($font->font, $font->size);
@@ -146,6 +147,8 @@ sub apply {
 
    if ($self->align eq "text_right") {
       # Special case... Single line of text that we don't paragraph out...
+      #    ... why does this exist? TODO: why can't align 'right' do this? 
+      #    t/20-demo.t doesn't work align 'right', but I don't know why.
       $content_text->text_right($text);
       return 1;
    }
@@ -248,7 +251,10 @@ sub apply {
       }
       $line_width += $wordspace * ( scalar(@line) - 1 );
 
-      if ( $align eq 'justify' ) {
+      # If we want to justify this line, or if there are any markup tags
+      # in here we'll have to split the line up word for word.
+      if ( $align eq 'justify' or (grep /<.*>/, @line) ) {
+         # TODO: [BUG1] This loop is DOA for align 'right' and 'center' with any tags. 
          foreach my $word (@line) {
             if (my ($tag) = ($word =~ /<(.*?)>/)) {
                my $stripped = $word;
@@ -302,17 +308,23 @@ sub _debug{
 Returns a scalar containing a paragraph of jibberish. Used by test scripts for 
 demonstrations.
 
+  my $jibberish = $tb->garbledy_gook(50);
+
+The integer is the numer of jibberish words you want returned. Default is 100.
+
 =cut
 
 sub garbledy_gook {
-   my ($self) = @_;
+   my ($self, $words) = @_;
    my $rval;
-   for (1..100) {
+   $words ||= 100;
+   for (1..$words) {
       for (1.. int(rand(10)) + 3) {
          $rval .= ('a'..'z')[ int(rand(26)) ];
       }
       $rval .= " ";
    }  
+   chop $rval;
    return $rval;
 }
 
@@ -328,6 +340,7 @@ sub _apply_defaults {
       lead     => 15 / pt,
       parspace => 0 / pt,
       align    => 'justify',
+      fonts    => {},
    );
    foreach my $att (keys %defaults) {
       $self->$att($defaults{$att}) unless defined $self->$att;
@@ -350,6 +363,19 @@ sub _apply_defaults {
 Jay Hannah, C<< <jay at jays.net> >>
 
 =head1 BUGS
+
+=over
+
+=item align 'right' and 'center' with any markup tags is broken 
+
+This software can't currently handle those alignments with any markup tags. 
+As written the software is in a loop calculating x position of each word, 
+one word at a time from left to right. But in the case of aligns 'right' 
+and 'center' we don't know the position of the first word until we know the 
+x positions of ALL words. 
+We need a smarter handler for this scenario. See t/30-demo.t. [BUG1]
+
+=back
 
 Please report any bugs or feature requests to C<bug-pdf-textblock at rt.cpan.org>, or through
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=PDF-TextBlock>.  I will be notified, and then you'll
