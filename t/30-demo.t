@@ -1,4 +1,4 @@
-use Test::More tests => 10;
+use Test::More tests => 4;
 
 # Bold every other word under various alignments.
 
@@ -25,9 +25,8 @@ my $text = $tb->garbledy_gook;
 $text =~ s/(\w+) (\w+)/$1 <b>$2<\/b>/g;
 $tb->text($text);
 
-my ($endw, $ypos, $paragraph);
-ok(($endw, $ypos, $paragraph) = $tb->apply(),         "apply()");
-printf("[%s|%s|%s|%s]\n", $endw, $ypos, $paragraph, $tb->text);
+my ($endw, $ypos);
+ok(($endw, $ypos) = $tb->apply(),                     "apply()");
 
 $pdf->save;    # Doesn't return true, even when it succeeds. -sigh-
 $pdf->end;     # Doesn't return true, even when it succeeds. -sigh-

@@ -14,6 +14,8 @@ use constant mm => 25.4 / 72;
 use constant in => 1 / 72;
 use constant pt => 1;
 
+my $debug = 0;
+
 =head1 NAME
 
 PDF::TextBlock - Easier creation of text blocks when using PDF::API2
@@ -69,13 +71,13 @@ sub apply {
       my $content_text = $page->text;      # PDF::API2::Content::Text obj
       my $font;
       if ($self->fonts && $self->fonts->{$tag}) {
-         warn "using the specific font you set for <$tag>";
+         $debug && warn "using the specific font you set for <$tag>";
          $font = $self->fonts->{$tag};
       } elsif ($self->fonts && $self->fonts->{default}) {
-         warn "using the default font you set for <$tag>";
+         $debug && warn "using the default font you set for <$tag>";
          $font = $self->fonts->{default};
       } else {
-         warn "using system default font for <$tag> since you specified neither <$tag> nor a 'default'";
+         $debug && warn "using system default font for <$tag> since you specified neither <$tag> nor a 'default'";
          $font = PDF::TextBlock::Font->new({ pdf => $pdf });
       }
       $font->apply_defaults;
@@ -106,7 +108,7 @@ sub apply {
    # Build a hash of widths we refer back to later.
    my %width = ();
    foreach my $word (@words) {
-      next if exists $width{$_};
+      next if exists $width{$word};
       if (my ($tag) = ($word =~ /<(.*?)>/)) {
          my $stripped = $word;
          $stripped =~ s/<.*?>//g;
@@ -196,11 +198,11 @@ sub apply {
             if (my ($tag) = ($word =~ /<(.*?)>/)) {
                my $stripped = $word;
                $stripped =~ s/<.*?>//g;
-               _debug("$tag 1", $xpos, $ypos, $stripped);
+               $debug && _debug("$tag 1", $xpos, $ypos, $stripped);
                $content_texts{$tag}->translate( $xpos, $ypos );
                $content_texts{$tag}->text($stripped);
             } else {
-               _debug("default 1", $xpos, $ypos, $word);
+               $debug && _debug("default 1", $xpos, $ypos, $word);
                $content_texts{default}->translate( $xpos, $ypos );
                $content_texts{default}->text($word);
             }
@@ -218,16 +220,17 @@ sub apply {
             $xpos += ( $self->w / 2 ) - ( $line_width / 2 );
          }
          # render the line
-         _debug("default 2", $xpos, $ypos, @line);
+         $debug && _debug("default 2", $xpos, $ypos, @line);
          $content_text->translate( $xpos, $ypos );
          $endw = $content_texts{default}->text( join( ' ', @line ) );
       }
       $ypos -= $self->lead;
       $first_line = 0;
    }
-   unshift( @paragraphs, join( ' ', @paragraph ) ) if scalar(@paragraph);
 
-   return ( $endw, $ypos, join( "\n", @paragraphs ) )
+   # Don't yet know why we'd want to return @paragraphs...
+   # unshift( @paragraphs, join( ' ', @paragraph ) ) if scalar(@paragraph);
+   return ( $endw, $ypos );  # , join( "\n", @paragraphs ) )
 }
 
 
