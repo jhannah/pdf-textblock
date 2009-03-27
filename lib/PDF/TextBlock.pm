@@ -14,7 +14,7 @@ use constant mm => 25.4 / 72;
 use constant in => 1 / 72;
 use constant pt => 1;
 
-my $debug = 0;
+my $debug = 1;
 
 =head1 NAME
 
@@ -30,7 +30,7 @@ our $VERSION = '0.01';
 
 =head1 SYNOPSIS
 
-  TODO copy from t/
+TODO - See t/ for examples.
 
 =head1 DESCRIPTION
 
@@ -41,6 +41,61 @@ trivial to do.
 =head1 METHODS
 
 =head2 new
+
+=over
+
+=item x
+
+X position from the left of the document. Default is 20/mm.
+
+=item y
+
+Y position from the bottom of the document. Default is 238/mm.
+
+=item w
+
+Width of this text block. Default is 175/mm.
+
+=item h
+
+Height of this text block. Default is 220/mm.
+
+=item lead
+
+From Rick's tutorial. I don't know what this does.  :)  Default is 15/pt.
+
+=item parspace
+
+From Rick's tutorial. I don't know what this does.  :)  Default is 0/pt.
+
+=item align
+
+Alignment of words in the text block. Default is 'justify'. Legal values:
+
+=over
+
+=item justify
+
+Spreads words out evenly in the text block so that each line ends in the same spot
+on the right side of the text block. The last line in a paragraph (too short to fill
+the entire line) will be set to 'left'.
+
+=item fulljustify
+
+Like justify, except that the last line is also spread across the page. The last
+line can look very odd with very large gaps.
+
+=item left
+
+Aligns each line to the left.
+
+=item right
+
+Aligns each line to the right.
+
+=back
+
+=back
 
 =head2 apply
 
@@ -125,7 +180,6 @@ sub apply {
    my $first_paragraph = 1;
 
    # while we can add another line
-
    while ( $ypos >= $self->y - $self->h + $self->lead ) {
 
       unless (@paragraph) {
@@ -188,7 +242,8 @@ sub apply {
          $wordspace = ( $self->w - $line_width ) / ( scalar(@line) - 1 );
          $align = 'justify';
       } else {
-         $align = ( $self->align eq 'justify' ) ? 'left' : $self->align;
+         # We've run out of words to fill a full line
+         $align = ( $self->align eq 'justify' ) ? 'left' : $self->align; 
          $wordspace = $space_width;
       }
       $line_width += $wordspace * ( scalar(@line) - 1 );
@@ -242,12 +297,27 @@ sub _debug{
 }
 
 
-=head2 _apply_defaults
+=head2 garbledy_gook
 
-Applies defaults for you wherever you didn't explicitly set a different value.
+Returns a scalar containing a paragraph of jibberish. Used by test scripts for 
+demonstrations.
 
 =cut
 
+sub garbledy_gook {
+   my ($self) = @_;
+   my $rval;
+   for (1..100) {
+      for (1.. int(rand(10)) + 3) {
+         $rval .= ('a'..'z')[ int(rand(26)) ];
+      }
+      $rval .= " ";
+   }  
+   return $rval;
+}
+
+
+# Applies defaults for you wherever you didn't explicitly set a different value.
 sub _apply_defaults {
    my ($self) = @_;
    my %defaults = (
@@ -272,26 +342,6 @@ sub _apply_defaults {
    unless (defined $self->text) {
       $self->text($self->garbledy_gook);
    }
-}
-
-
-=head2 garbledy_gook
-
-Returns a string of jibberish. Used by test scripts to verify that different justifications
-(left, right, justify, etc.) are working.
-
-=cut
-
-sub garbledy_gook {
-   my ($self) = @_;
-   my $rval;
-   for (1..100) {
-      for (1.. int(rand(10)) + 3) {
-         $rval .= ('a'..'z')[ int(rand(26)) ];
-      }
-      $rval .= " ";
-   }  
-   return $rval;
 }
 
 
@@ -336,7 +386,6 @@ L<http://search.cpan.org/dist/PDF-TextBlock>
 L<http://github.com/jhannah/pdf-textblock/tree/master>
 
 =back
-
 
 =head1 ACKNOWLEDGEMENTS
 
