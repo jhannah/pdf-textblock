@@ -49,7 +49,9 @@ our $VERSION = '0.01';
      'in a <b>different font, specifically the one we tagged b for "bold".</b> ' .
      $tb->garbledy_gook .
      ' <href="http://www.omnihotels.com">Click here to visit Omni Hotels.</href> ' .
-     $tb->garbledy_gook
+     $tb->garbledy_gook . "\n\n" .
+     "New paragraph.\n\n" .
+     "Another paragraph."
   );
   $tb->apply;
   $pdf->save;
@@ -57,9 +59,18 @@ our $VERSION = '0.01';
 
 =head1 DESCRIPTION
 
-Neither Rick Measham's excellent PDF::API2 tutorial nor PDF::FromHTML are able to cope with
-wanting a single word (or words) bolded inside a text block. This module makes that task
-trivial.
+Neither Rick Measham's excellent L<PDF::API2> tutorial nor L<PDF::FromHTML> are able to cope with
+wanting some words inside a text block to be bold. This module makes that task trivial.
+
+Simply define whatever tags you want PDF::TextBlock to honor inside the fonts hashref, and
+then you are free to use HTML-like markup in the text attribute and we'll render those fonts
+for you. 
+
+We also honor the HTML-like tag <href>. This means that we add annotation to the PDF for you
+which makes the word(s) you wrap in <href> clickable, and we underline those words.
+
+Note this markup syntax is very rudimentary. We do not support HTML.
+Tags cannot overlap each other. There is no way to escape tags inside text().
 
 =head1 METHODS
 
@@ -123,7 +134,7 @@ Aligns each line to the right.
 =head2 apply
 
 The original version of this method was text_block(), which is © Rick Measham, 2004-2007. 
-The latest version of text_block() can be found in the tutorial located at http://rick.measham.id.au/pdf-api2/
+The latest version of text_block() can be found in the tutorial located at L<http://rick.measham.id.au/pdf-api2/>
 text_block() is released under the LGPL v2.1.
 
 =cut

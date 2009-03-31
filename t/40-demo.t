@@ -21,7 +21,9 @@ ok($tb->text(
    'in a <b>different font, specifically the one we tagged b for "bold".</b> ' .
    $tb->garbledy_gook . 
    ' <href="http://www.omnihotels.com">Click here to visit Omni Hotels.</href> ' .
-   $tb->garbledy_gook
+   $tb->garbledy_gook . "\n\n" . 
+   "New paragraph.\n\n" .
+   "Another paragraph."
 ),                                                    "text()");
 ok(($endw, $ypos) = $tb->apply(),                     "apply()");
 
