@@ -170,7 +170,13 @@ sub apply {
       if (my ($tag) = ($word =~ /<(.*?)>/)) {
          my $stripped = $word;
          $stripped =~ s/<.*?>//g;
-         $width{$word} = $content_texts{$tag}->advancewidth($stripped);
+         if ($content_texts{$tag}) {
+            $width{$word} = $content_texts{$tag}->advancewidth($stripped);
+         } else {
+            # Huh. They didn't declare this one, so we'll put default in here for them.
+            $content_texts{$tag} = $content_texts{default};
+            $width{$word} = $content_texts{$tag}->advancewidth($stripped);
+         }
       } else {
          $width{$word} = $content_texts{default}->advancewidth($word);
       }
@@ -251,26 +257,50 @@ sub apply {
       }
       $line_width += $wordspace * ( scalar(@line) - 1 );
 
+      my ($href, $tag);
+      my $current_content_text = $content_texts{default};
+
       # If we want to justify this line, or if there are any markup tags
       # in here we'll have to split the line up word for word.
       if ( $align eq 'justify' or (grep /<.*>/, @line) ) {
          # TODO: [BUG1] This loop is DOA for align 'right' and 'center' with any tags. 
          foreach my $word (@line) {
-            if (my ($tag) = ($word =~ /<(.*?)>/)) {
-               my $stripped = $word;
-               $stripped =~ s/<.*?>//g;
-               $debug && _debug("$tag 1", $xpos, $ypos, $stripped);
-               $content_texts{$tag}->translate( $xpos, $ypos );
-               $content_texts{$tag}->text($stripped);
-            } else {
-               $debug && _debug("default 1", $xpos, $ypos, $word);
-               $content_texts{default}->translate( $xpos, $ypos );
-               $content_texts{default}->text($word);
+            if (($tag) = ($word =~ /<(.*?)>/)) {
+               # warn "tag is $tag";
+               if ($tag =~ /^href/) {
+                  ($href) = ($tag =~ /href="(.*?)"/);
+                  # warn "href is now $href";
+               } elsif ($tag !~ /\//) {
+                  $current_content_text = $content_texts{$tag};
+               }
             }
+                
+            my $stripped = $word;
+            $stripped =~ s/<.*?>//g;
+            $debug && _debug("$tag 1", $xpos, $ypos, $stripped);
+            $current_content_text->translate( $xpos, $ypos );
+
+            if ($href) {
+               $current_content_text->text($stripped, -underline => [2,.5]);
+               my $ann = $page->annotation;
+               $ann->rect($xpos, $ypos - 3, $xpos + $width{$word} + $wordspace, $ypos + 10);
+               $ann->url($href);
+            } else {
+               $current_content_text->text($stripped);
+            }
+
             unless ($width{$word}) {
                warn "Can't find \$width{$word}";
             }
             $xpos += ( $width{$word} + $wordspace ) if (@line);
+
+            if ($word =~ /\//) {
+               if ($word =~ /\/href/) {
+                  undef $href;
+               } else {
+                  $current_content_text = $content_texts{default};
+               }
+            }
          }
          $endw = $self->w;
       } else {
