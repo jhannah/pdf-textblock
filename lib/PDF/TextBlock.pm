@@ -30,7 +30,30 @@ our $VERSION = '0.01';
 
 =head1 SYNOPSIS
 
-TODO - See t/ for examples.
+  use PDF::API2;
+  use PDF::TextBlock;
+
+  my $pdf = PDF::API2->new( -file => "40-demo.pdf" );
+  my $tb  = PDF::TextBlock->new({
+     pdf       => $pdf,
+     fonts     => {
+        b => PDF::TextBlock::Font->new({
+           pdf  => $pdf,
+           font => $pdf->corefont( 'Helvetica-Bold',    -encoding => 'latin1' ),
+        }),
+     },
+  });
+  $tb->text(
+     $tb->garbledy_gook .
+     ' <b>This fairly lengthy</b>, rather verbose sentence <b>is tagged</b> to appear ' .
+     'in a <b>different font, specifically the one we tagged b for "bold".</b> ' .
+     $tb->garbledy_gook .
+     ' <href="http://www.omnihotels.com">Click here to visit Omni Hotels.</href> ' .
+     $tb->garbledy_gook
+  );
+  $tb->apply;
+  $pdf->save;
+  $pdf->end;
 
 =head1 DESCRIPTION
 
@@ -164,21 +187,27 @@ sub apply {
    my @words = split( /\s+/, $text );
 
    # Build a hash of widths we refer back to later.
+   my $current_content_text = $content_texts{default};
+   my $tag;
    my %width = ();
    foreach my $word (@words) {
       next if exists $width{$word};
-      if (my ($tag) = ($word =~ /<(.*?)>/)) {
-         my $stripped = $word;
-         $stripped =~ s/<.*?>//g;
-         if ($content_texts{$tag}) {
-            $width{$word} = $content_texts{$tag}->advancewidth($stripped);
-         } else {
-            # Huh. They didn't declare this one, so we'll put default in here for them.
-            $content_texts{$tag} = $content_texts{default};
-            $width{$word} = $content_texts{$tag}->advancewidth($stripped);
+      if (($tag) = ($word =~ /<(.*?)>/)) {
+         if ($tag !~ /\//) {
+            unless ($content_texts{$tag}) {
+               # Huh. They didn't declare this one, so we'll put default in here for them.
+               $content_texts{$tag} = $content_texts{default};
+            }
+            $current_content_text = $content_texts{$tag};
          }
-      } else {
-         $width{$word} = $content_texts{default}->advancewidth($word);
+      }
+           
+      my $stripped = $word;
+      $stripped =~ s/<.*?>//g;
+      $width{$word} = $current_content_text->advancewidth($stripped);
+
+      if ($tag && $tag =~ /^\//) {
+         $current_content_text = $content_texts{default};
       }
    }
 
@@ -187,6 +216,9 @@ sub apply {
 
    my $first_line      = 1;
    my $first_paragraph = 1;
+
+   my ($href);
+   $current_content_text = $content_texts{default};
 
    # while we can add another line
    while ( $ypos >= $self->y - $self->h + $self->lead ) {
@@ -257,9 +289,6 @@ sub apply {
       }
       $line_width += $wordspace * ( scalar(@line) - 1 );
 
-      my ($href, $tag);
-      my $current_content_text = $content_texts{default};
-
       # If we want to justify this line, or if there are any markup tags
       # in here we'll have to split the line up word for word.
       if ( $align eq 'justify' or (grep /<.*>/, @line) ) {
@@ -281,7 +310,23 @@ sub apply {
             $current_content_text->translate( $xpos, $ypos );
 
             if ($href) {
-               $current_content_text->text($stripped, -underline => [2,.5]);
+               $current_content_text->text($stripped);  # -underline => [2,.5]);
+
+               # It would be nice if we could use -underline above, but it leaves gaps
+               # between each word, which we don't like. So we'll have to draw our own line
+               # that knows how and when to extend into the space between words.
+               my $underline = $page->gfx;
+               # $underline->strokecolor('black');
+               $underline->linewidth(.5);
+               $underline->move( $xpos, $ypos - 2);
+               if ($word =~ /<\/href/) {
+                  $underline->line( $xpos + $width{$word}, $ypos - 2);
+               } else {
+                  $underline->line( $xpos + $width{$word} + $wordspace, $ypos - 2);
+               }
+               $underline->stroke;
+
+               # Add hyperlink
                my $ann = $page->annotation;
                $ann->rect($xpos, $ypos - 3, $xpos + $width{$word} + $wordspace, $ypos + 10);
                $ann->url($href);
