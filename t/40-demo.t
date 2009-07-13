@@ -25,7 +25,7 @@ ok($tb->text(
    "New paragraph.\n\n" .
    "Another paragraph."
 ),                                                    "text()");
-ok(($endw, $ypos) = $tb->apply(),                     "apply()");
+ok($tb->apply(),                                      "apply()");
 
 
 $pdf->save;    # Doesn't return true, even when it succeeds. -sigh-
