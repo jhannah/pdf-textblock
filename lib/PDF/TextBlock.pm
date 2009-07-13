@@ -20,13 +20,9 @@ my $debug = 0;
 
 PDF::TextBlock - Easier creation of text blocks when using PDF::API2
 
-=head1 VERSION
-
-Version 0.01
-
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 SYNOPSIS
 
@@ -272,8 +268,9 @@ sub apply {
          $line_width += $self->indent;
       }
 
+      @paragraph = grep { length($_) } @paragraph;
       while ( 
-         @paragraph and 
+         @paragraph &&
             $line_width + 
             ( scalar(@line) * $space_width ) +
             $width{ $paragraph[0] } 
