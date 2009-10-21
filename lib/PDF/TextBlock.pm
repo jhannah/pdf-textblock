@@ -441,7 +441,8 @@ sub apply {
             }
 
             unless ($width{$word}) {
-               warn "Can't find \$width{$word}";
+               $debug && _debug("Can't find \$width{$word}");
+               $width{$word} = 0;
             }
             $xpos += ( $width{$word} + $wordspace ) if (@line);
 
