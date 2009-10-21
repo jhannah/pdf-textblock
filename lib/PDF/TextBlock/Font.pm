@@ -15,14 +15,6 @@ use constant pt => 1;
 
 PDF::TextBlock::Font - A font object to override the defaults PDF::TextBlock uses
 
-=head1 VERSION
-
-Version 0.01
-
-=cut
-
-our $VERSION = '0.01';
-
 =head1 SYNOPSIS
 
   TODO  add from t/*
