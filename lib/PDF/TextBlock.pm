@@ -230,7 +230,7 @@ sub apply {
    # Build %content_texts. A hash of all PDF::API2::Content::Text objects,
    # one for each tag (<b> or <i> or whatever) in $text.
    my %content_texts;
-   foreach my $tag (($text =~ /<([^\/].*?)>/g), "default") {
+   foreach my $tag (($text =~ /<(\w*)[^\/].*?>/g), "default") {       
       next if ($content_texts{$tag});
       my $content_text = $page->text;      # PDF::API2::Content::Text obj
       my $font;
@@ -386,6 +386,7 @@ sub apply {
                if ($tag =~ /^href/) {
                   ($href) = ($tag =~ /href="(.*?)"/);
                   # warn "href is now $href";
+                  $current_content_text = $content_texts{href} if ref $content_texts{href};
                } elsif ($tag !~ /\//) {
                   $current_content_text = $content_texts{$tag};
                }
@@ -429,7 +430,8 @@ sub apply {
             if ($word =~ /\//) {
                if ($word =~ /\/href/) {
                   undef $href;
-               } else {
+               }
+               unless ($href) {
                   $current_content_text = $content_texts{default};
                }
             }
@@ -453,7 +455,10 @@ sub apply {
 
    # Don't yet know why we'd want to return @paragraphs...
    # unshift( @paragraphs, join( ' ', @paragraph ) ) if scalar(@paragraph);
-   return ( $endw, $ypos );  # , join( "\n", @paragraphs ) )
+   #return ( $endw, $ypos );  # , join( "\n", @paragraphs ) )
+   unshift( @paragraphs, join( ' ', @paragraph ) ) if scalar(@paragraph);
+   my $overflow = join("\n",@paragraphs);
+   return ( $endw, $ypos, $overflow);    #$overflow text returned to script
 }
 
 
