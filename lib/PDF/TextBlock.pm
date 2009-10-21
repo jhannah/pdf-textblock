@@ -68,6 +68,9 @@ which makes the word(s) you wrap in <href> clickable, and we underline those wor
 Note this markup syntax is very rudimentary. We do not support HTML.
 Tags cannot overlap each other. There is no way to escape tags inside text().
 
+The tests in t/ generate .pdf files. You might find those examples helpful.
+Watch out for 20-demo.pdf. It spits.  :)
+
 =head1 METHODS
 
 =head2 new
@@ -207,6 +210,21 @@ Default is 0/pt.
 =head2 apply
 
 This is where we do all the L<PDF::API2> heavy lifting for you.
+
+Returns $endw, $ypos, $overflow. 
+
+I'm not sure what $endw is good for, it's straight from Ricks' code.  :)
+
+$ypos is useful when you have multiple TextBlock objects and you want to start
+the next one wherever the previous one left off.
+
+  my ($endw, $ypos) = $tb->apply();
+  $tb->y($ypos);
+  $tb->text("a bunch more text");
+  $tb->apply();
+
+$overflow is whatever text() didn't fit inside your TextBlock. 
+(Too much text? Your font was too big? You set w and h too small?)
 
 The original version of this method was text_block(), which is © Rick Measham, 2004-2007. 
 The latest version of text_block() can be found in the tutorial located at L<http://rick.measham.id.au/pdf-api2/>.
@@ -576,7 +594,7 @@ L<http://search.cpan.org/dist/PDF-TextBlock>
 
 =item * Version control
 
-L<http://github.com/jhannah/pdf-textblock/tree/master>
+L<http://github.com/jhannah/pdf-textblock>
 
 =back
 

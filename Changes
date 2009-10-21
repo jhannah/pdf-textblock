@@ -3,7 +3,7 @@ Revision history for PDF-TextBlock
 0.03    2009-10-21 10:53
         Per discussion http://www.perlmonks.org/?node_id=793206
         - I made POD enhancements to try to clarify.
-        - Applied almut's patch.
+        - Applied almut's patch. Thanks almut! Thanks dickieb!
 
 0.02    2009-07-13 11:45
         Extraneous warnings corrected.
