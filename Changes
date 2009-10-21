@@ -1,5 +1,8 @@
 Revision history for PDF-TextBlock
 
+0.04    2009-10-21 12:04
+        Oops. I made PAUSE mad, so now I have to jump to 0.04.
+
 0.03    2009-10-21 10:53
         Per discussion http://www.perlmonks.org/?node_id=793206
         - I made POD enhancements to try to clarify.
