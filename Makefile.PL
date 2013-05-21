@@ -14,6 +14,11 @@ WriteMakefile(
         'Class::Accessor::Fast' => 0,
         'File::Temp'            => 0,
     },
+    META_MERGE => {
+         resources => {
+             repository  =>  'https://github.com/jhannah/pdf-textblock',
+         },
+    },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'PDF-TextBlock-*' },
 );
