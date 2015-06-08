@@ -22,7 +22,7 @@ PDF::TextBlock - Easier creation of text blocks when using PDF::API2
 
 =cut
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 =head1 SYNOPSIS
 
@@ -35,7 +35,7 @@ our $VERSION = '0.06';
      fonts     => {
         b => PDF::TextBlock::Font->new({
            pdf  => $pdf,
-           font => $pdf->corefont( 'Helvetica-Bold',    -encoding => 'latin1' ),
+           font => $pdf->corefont( 'Helvetica-Bold', -encoding => 'latin1' ),
         }),
      },
   });
@@ -226,7 +226,7 @@ the next one wherever the previous one left off.
 $overflow is whatever text() didn't fit inside your TextBlock. 
 (Too much text? Your font was too big? You set w and h too small?)
 
-The original version of this method was text_block(), which is © Rick Measham, 2004-2007. 
+The original version of this method was text_block(), which is (c) Rick Measham, 2004-2007. 
 The latest version of text_block() can be found in the tutorial located at L<http://rick.measham.id.au/pdf-api2/>.
 text_block() is released under the LGPL v2.1.
 
