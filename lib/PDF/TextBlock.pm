@@ -401,10 +401,9 @@ sub apply {
          foreach my $word (@line) {
             if (($tag) = ($word =~ /<(.*?)>/)) {
                # warn "tag is $tag";
-               if ($tag =~ /^href/) {
-                  ($href) = ($tag =~ /href="(.*?)"/);
-                  # warn "href is now $href";
-                  $current_content_text = $content_texts{href} if ref $content_texts{href};
+               if ($tag =~ /^href[a-z]?/) {
+                  ($tag, $href) = ($tag =~ /(href[a-z]?)="(.*?)"/);
+                  $current_content_text = $content_texts{$tag} if ref $content_texts{$tag};
                } elsif ($tag !~ /\//) {
                   $current_content_text = $content_texts{$tag};
                }
@@ -425,7 +424,7 @@ sub apply {
                # $underline->strokecolor('black');
                $underline->linewidth(.5);
                $underline->move( $xpos, $ypos - 2);
-               if ($word =~ /<\/href/) {
+               if ($word =~ /<\/href[a-z]?/) {
                   $underline->line( $xpos + $width{$word}, $ypos - 2);
                } else {
                   $underline->line( $xpos + $width{$word} + $wordspace, $ypos - 2);
@@ -447,7 +446,7 @@ sub apply {
             $xpos += ( $width{$word} + $wordspace ) if (@line);
 
             if ($word =~ /\//) {
-               if ($word =~ /\/href/) {
+               if ($word =~ /\/href[a-z]?/) {
                   undef $href;
                }
                unless ($href) {
