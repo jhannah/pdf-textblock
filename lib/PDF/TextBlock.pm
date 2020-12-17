@@ -397,7 +397,7 @@ sub apply {
       # If we want to justify this line, or if there are any markup tags
       # in here we'll have to split the line up word for word.
       if ( $align eq 'justify' or (grep /<.*>/, @line) ) {
-         # TODO: [BUG1] This loop is DOA for align 'right' and 'center' with any tags. 
+         # TODO: #4 This loop is DOA for align 'right' and 'center' with any tags. 
          foreach my $word (@line) {
             if (($tag) = ($word =~ /<(.*?)>/)) {
                # warn "tag is $tag";
@@ -559,13 +559,10 @@ As written the software is in a loop calculating x position of each word,
 one word at a time from left to right. But in the case of aligns 'right' 
 and 'center' we don't know the position of the first word until we know the 
 x positions of ALL words. 
-We need a smarter handler for this scenario. See t/30-demo.t. [BUG1]
+We need a smarter handler for this scenario. See t/30-demo.t.
+https://github.com/jhannah/pdf-textblock/issues/4
 
 =back
-
-Please report any bugs or feature requests to C<bug-pdf-textblock at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=PDF-TextBlock>.  I will be notified, and then you'll
-automatically be notified of progress on your bug as I make changes.
 
 =head1 SUPPORT
 
@@ -573,31 +570,7 @@ You can find documentation for this module with the perldoc command.
 
     perldoc PDF::TextBlock
 
-You can also look for information at:
-
-=over 4
-
-=item * RT: CPAN's request tracker
-
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=PDF-TextBlock>
-
-=item * AnnoCPAN: Annotated CPAN documentation
-
-L<http://annocpan.org/dist/PDF-TextBlock>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/PDF-TextBlock>
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/PDF-TextBlock>
-
-=item * Version control
-
-L<http://github.com/jhannah/pdf-textblock>
-
-=back
+Source code and bug reports on github: L<http://github.com/jhannah/pdf-textblock>
 
 =head1 ACKNOWLEDGEMENTS
 
@@ -606,7 +579,7 @@ This module started from, and has grown on top of, Rick Measham's (aka Woosta)
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2013 Jay Hannah, all rights reserved.
+Copyright 2009-2020 Jay Hannah, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
