@@ -1,5 +1,9 @@
 Revision history for PDF-TextBlock
 
+0.09    2020-12-17
+        BUG1 moved to github issues (#4) since someone was interested in patching.
+        (#2) fabiomux patch for different styles of href tag
+
 0.08    2015-06-09
         Oops. Bad PAUSE tarball upload.
 
