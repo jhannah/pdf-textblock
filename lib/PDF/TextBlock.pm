@@ -22,7 +22,7 @@ PDF::TextBlock - Easier creation of text blocks when using PDF::API2
 
 =cut
 
-our $VERSION = '0.09';
+our $VERSION = '0.10';
 
 =head1 SYNOPSIS
 

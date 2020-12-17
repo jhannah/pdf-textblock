@@ -11,6 +11,8 @@ use constant mm => 25.4 / 72;
 use constant in => 1 / 72;
 use constant pt => 1;
 
+our $VERSION = '0.04';
+
 =head1 NAME
 
 PDF::TextBlock::Font - A font object to override the defaults PDF::TextBlock uses
