@@ -398,6 +398,15 @@ sub apply {
       # in here we'll have to split the line up word for word.
       if ( $align eq 'justify' or (grep /<.*>/, @line) ) {
          # TODO: #4 This loop is DOA for align 'right' and 'center' with any tags. 
+         # FMCC Fix proposal
+         if ( $align eq 'center' ) {
+         	# Fix $xpos
+         	$xpos += ( $self->w / 2 ) - ( $line_width / 2 );
+         } elsif ( $align eq 'right' ) {
+         	# Fix $xpos
+         	$xpos += $self->w - $line_width;;         
+         }
+         # END FMCC Fix Proposal
          foreach my $word (@line) {
             if (($tag) = ($word =~ /<(.*?)>/)) {
                # warn "tag is $tag";
