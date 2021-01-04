@@ -15,8 +15,13 @@ WriteMakefile(
         'File::Temp'            => 0,
     },
     META_MERGE => {
+         "meta-spec" => { version => 2 },
          resources => {
-             repository  =>  'https://github.com/jhannah/pdf-textblock',
+             repository => {
+                 type => 'git',
+                 url  => 'git@github.com:jhannah/pdf-textblock.git',
+                 web  => 'https://github.com/jhannah/pdf-textblock.git',
+             },
          },
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
