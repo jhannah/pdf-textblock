@@ -1,6 +1,6 @@
 PDF-TextBlock
 
-Easier creation of text blocks when using PDF::API2.
+Easier creation of text blocks when using PDF::API2 or PDF::Builder.
 
 INSTALLATION
 
